@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# virtual environment
+.venv/
+
+# test tooling
+.pytest_cache/
+
+# third-party reference repo cloned for research (246MB, has its own .git) --
+# never vendor this into our history
+_poc/adventure-maps/

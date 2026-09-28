@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cartomanic"
+version = "0.1.0"
+authors = [
+    { name = "Emanuel" }
+]
+description = "Interactive builder for classified maps of Brazil, down to the municipality level."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "geobr>=0.2.2",
+    "geopandas>=1.1.0",
+    "pandas>=2.2",
+    "duckdb>=1.0.0",
+    "pyarrow>=16.0",
+]
+
+[project.urls]
+"Homepage" = "https://example.com"
+
+[project.scripts]
+cartomanic = "cartomanic.__main__:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = [
+    "cartomanic",
+    "cartomanic.gui",
+    "cartomanic.engine",
+    "cartomanic.data",
+]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"cartomanic" = ["data/geo_cache/**"]
