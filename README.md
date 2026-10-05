@@ -10,7 +10,15 @@ Sucessor direto do projeto legado `pybrmania`, reconstruído do zero com uma
 separação clara entre dado geográfico (`data/`), regra de negócio
 (`engine/`) e interface (`gui/`).
 
-## Como rodar
+## Instalação (usuário final)
+
+Baixe o instalador mais recente na [página de
+Releases](https://github.com/emanuelbarroso/cartomanicbr/releases) --
+`CartomanicBR-Setup-<versão>.exe`. Instala por usuário (sem pedir
+permissão de administrador), em português brasileiro. Ver
+`packaging/README.md` pra detalhes de como esse instalador é gerado.
+
+## Como rodar (desenvolvimento)
 
 ```bash
 cd cartomanic
@@ -121,8 +129,6 @@ empacotada no repositório.
 
 ## Limitações conhecidas / pendências
 
-- **Ainda não é um repositório git.** Muito trabalho em disco, zero
-  histórico de commit.
 - Preview de impressão é uma **foto do momento em que abre** — não
   atualiza sozinho se você trocar de estado ou reclassificar com ele
   aberto.
@@ -139,19 +145,24 @@ empacotada no repositório.
 - Suite de testes automatizados cobre só `engine/` (24 testes). Toda a
   validação de `gui/` feita ao longo do projeto foi manual, sessão a
   sessão — não existe teste de regressão pra diálogo/canvas.
-- Sem empacotamento pra distribuição (instalador, `.exe`) — hoje só roda
-  via `python -m cartomanic` dentro da `.venv` de desenvolvimento.
+- Instalador Windows sem ícone customizado e sem assinatura de código --
+  o SmartScreen do Windows avisa "editor desconhecido" na primeira
+  execução. Ver `packaging/README.md`.
 
 ## Sugestões pra próximos passos
 
-1. **`git init` + primeiro commit** — prioridade alta, é risco real de
-   perda de trabalho.
-2. Testes automatizados de `gui/` (mesmo que só os smoke tests que fizemos
+1. Testes automatizados de `gui/` (mesmo que só os smoke tests que fizemos
    manualmente, formalizados em `tests/`).
-3. Migração leve pra projetos antigos: se `included_states` estiver vazia
+2. Migração leve pra projetos antigos: se `included_states` estiver vazia
    mas existir classificação, inferir os estados a partir dela.
-4. Exportar o Preview como imagem/PDF de verdade (hoje é só visualização
+3. Exportar o Preview como imagem/PDF de verdade (hoje é só visualização
    em tela).
-5. Lista de "projetos recentes" no menu File.
-6. Decidir o que fazer com categorias órfãs ao trocar discreto ↔
+4. Lista de "projetos recentes" no menu File.
+5. Decidir o que fazer com categorias órfãs ao trocar discreto ↔
    hierárquico (perguntar antes, ou limpar automaticamente).
+6. Ícone customizado + assinatura de código pro instalador (ver
+   `packaging/README.md`).
+
+## Licença
+
+MIT -- ver [`LICENSE`](LICENSE).

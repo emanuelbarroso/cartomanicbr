@@ -12,3 +12,14 @@ __pycache__/
 # third-party reference repo cloned for research (246MB, has its own .git) --
 # never vendor this into our history
 _poc/adventure-maps/
+
+# PyInstaller build output -- regenerated from packaging/cartomanic.spec,
+# never committed (hundreds of MB)
+build/
+build_*/
+dist/
+dist_*/
+
+# Inno Setup installer output -- regenerated from packaging/cartomanic.iss
+installer_output/
+
