@@ -26,6 +26,12 @@ source .venv/Scripts/activate   # Windows/Git Bash
 python -m cartomanic
 ```
 
+No PowerShell, sem ativar a venv:
+
+```powershell
+.\.venv\Scripts\python.exe -m cartomanic
+```
+
 Rodar os testes:
 
 ```bash
@@ -38,16 +44,19 @@ python -m pytest tests/ -q
 src/cartomanic/
   data/
     geo_source.py       # geobr -> SnapshotStore -> GeoDataFrame pra desenhar
+    ibge_source.py      # API de agregados do IBGE -> população e área oficial
   engine/
     snapshot_store.py   # armazenamento com retenção (máx. 5 versões por dataset)
     project.py          # Project: só metadados + tabelas DuckDB, nunca geometria
     classification_io.py# export/import JSON de esquema+classificação
+    statistics.py       # contas das Estatísticas gerais (pandas puro, sem GUI)
   gui/
     main_window.py      # janela principal, menus, toolbar, orquestração
     map_canvas.py        # desenho (Tkinter Canvas), zero estado próprio de geometria
     map_tree.py           # árvore de navegação (Brasil > estados incluídos no projeto)
     _insets.py             # detecção automática de ilhas distantes (Fernando de Noronha etc.)
     _projection.py          # bounds/fit/transform de coordenada, compartilhado
+    statistics_dialog.py   # janela de Estatísticas gerais (só exibe; contas no engine)
     scheme_editor_dialog.py, gradient_dialog.py, bulk_tier_dialog.py,
     obtain_data_dialog.py, preview_dialog.py, state_picker_dialog.py, ...
 ```
@@ -69,8 +78,15 @@ empacotada no repositório.
   que o GeoJSON do legado) e carregado via `geopandas` (resolveu de
   brinde um bug do parser manual do legado, que descartava anéis internos).
 - **Snapshots com retenção (máx. 5)** como padrão único pra qualquer dado
-  baixado (município via `geobr`, ou uma classificação via CSV) — mesmo
-  mecanismo, `append` ou `replace`, nunca mistura os dois.
+  baixado (município via `geobr`, população/área via IBGE, ou uma
+  classificação via CSV) — mesmo mecanismo, `append` ou `replace`, nunca
+  mistura os dois.
+- **API de agregados do IBGE** (`servicodados.ibge.gov.br`), não a SIDRA
+  direto — são as mesmas tabelas, mas a SIDRA fica atrás de um desafio
+  anti-robô que bloqueia cliente HTTP comum.
+- **Estatísticas: contas no `engine/`, janela só exibe** — a mesma
+  separação do resto do projeto, e é o que deixa as contas testáveis sem
+  abrir nenhuma janela.
 
 ## Funcionalidades implementadas
 
@@ -85,9 +101,16 @@ empacotada no repositório.
   **não apagam classificação** (readicionar o estado traz tudo de volta).
 
 **Dado geográfico**
-- Data > Obtain from Internet (município via `geobr`, com buffer de até 5
-  snapshots, escolha de substituir ou adicionar) e Obtain from CSV (mesmo
-  mecanismo, fonte local).
+- Data > Obtain from Internet (com buffer de até 5 snapshots, escolha de
+  substituir ou adicionar) e Obtain from CSV (mesmo mecanismo, fonte
+  local). Fontes de internet disponíveis:
+  - **Municípios** — geometria via `geobr`.
+  - **População e área (Censo 2022)** — IBGE, tabela 4714: população
+    residente e área territorial *oficial* (km²) de cada município.
+  - **População estimada (IBGE)** — tabela 6579: todos os anos publicados
+    depois do Censo (hoje 2024–2026).
+- Uma cópia de cada um desses datasets vem empacotada no repositório
+  (`data/geo_cache/`), então tudo funciona sem internet.
 - Ilhas distantes (Fernando de Noronha/PE, Trindade e Martim Vaz/ES — essa
   é só *parte* do polígono de Vitória) são detectadas automaticamente
   (dissolve de geometria + teste de distância real, não uma lista de nomes
@@ -104,11 +127,35 @@ empacotada no repositório.
 - Clique esquerdo no mapa cicla pelas categorias; clique direito apaga a
   classificação do município direto.
 - Adição em Série: mover municípios entre duas listas (com busca
-  `starts_with` e destaque) e aplicar tudo de uma vez.
+  `starts_with` e destaque) e aplicar tudo de uma vez. Checkbox "Ocultar
+  municípios já classificados em outra categoria" tira da lista da
+  esquerda quem já está em outra categoria (salva ou só pendente), pra
+  não puxar por engano; o título da lista mostra quantos foram ocultados.
 - Modos de visualização pra esquema hierárquico: Tudo / `=` Exato / `≥`
   Hierarquia (cada modo é uma query DuckDB diferente sobre a mesma tabela).
 - Export/Import JSON do esquema + classificação, com validação completa
   (todo erro é acumulado e mostrado de uma vez, nunca aplica parcial).
+
+**Estatísticas gerais** (Data > Estatísticas gerais..., ou botão de
+gráfico na barra)
+- Janela não-modal com abas **Brasil / Regiões / Estados**: por categoria,
+  quantidade de municípios, área oficial (km²) e população, cada uma com
+  seu %, mais em quantas UFs a categoria aparece (Brasil e Regiões).
+- Linhas: uma por categoria (com a cor), "Sem classificação" e "Total";
+  os % são sempre relativos ao Total do grupo e somam 100%.
+- População selecionável: Censo 2022 ou qualquer ano de estimativa
+  disponível.
+- Checkbox "Só estados incluídos no projeto" restringe tudo aos estados
+  da árvore.
+- Esquema hierárquico segue o modo do mapa: `=` mostra só a categoria
+  escolhida, `≥` cada categoria daquela pra cima + um Subtotal; o que o
+  modo deixa de fora vai pra "Outras categorias".
+- Atualiza sozinha (com debounce) a cada clique, Adição em Série, troca de
+  esquema/modo/estados ou projeto — diferente do Preview, nunca fica
+  desatualizada.
+- Município mais novo que a geometria (ex.: 5101837, que aparece nas
+  estimativas a partir de 2025) entra só com a população nos totais de
+  estado/região/Brasil, com uma nota no rodapé.
 
 **Mapa**
 - Hover mostra nome do município + UF (ou nome do estado, na visão Brasil).
@@ -142,17 +189,23 @@ empacotada no repositório.
 - Cache do `GeoDataFrame` carregado (item "3" da discussão de performance)
   não foi implementado — cada troca de estado ainda relê o parquet do
   Brasil inteiro (~0,1s, hoje irrelevante perto do resto).
-- Suite de testes automatizados cobre só `engine/` (24 testes). Toda a
-  validação de `gui/` feita ao longo do projeto foi manual, sessão a
-  sessão — não existe teste de regressão pra diálogo/canvas.
+- Suite de testes automatizados (44 testes) cobre `engine/`, a leitura
+  das respostas da API do IBGE (sem rede) e smoke tests de GUI da Adição
+  em Série e das Estatísticas gerais (esses abrem janelas Tk de verdade e
+  são pulados onde não há Tk). O resto de `gui/` — canvas, editor de
+  esquema, Preview etc. — continua validado só manualmente.
+- A soma das áreas oficiais dos municípios dá ~13 mil km² a menos que a
+  área do Brasil (provavelmente as lagoas que o IBGE contabiliza à parte);
+  os % de área nas Estatísticas usam a soma dos municípios como base.
 - Instalador Windows sem ícone customizado e sem assinatura de código --
   o SmartScreen do Windows avisa "editor desconhecido" na primeira
   execução. Ver `packaging/README.md`.
 
 ## Sugestões pra próximos passos
 
-1. Testes automatizados de `gui/` (mesmo que só os smoke tests que fizemos
-   manualmente, formalizados em `tests/`).
+1. Estender os testes de `gui/` pros diálogos que ainda não têm (canvas,
+   editor de esquema, Preview), no mesmo molde de
+   `tests/test_statistics_dialog.py`.
 2. Migração leve pra projetos antigos: se `included_states` estiver vazia
    mas existir classificação, inferir os estados a partir dela.
 3. Exportar o Preview como imagem/PDF de verdade (hoje é só visualização
@@ -162,6 +215,7 @@ empacotada no repositório.
    hierárquico (perguntar antes, ou limpar automaticamente).
 6. Ícone customizado + assinatura de código pro instalador (ver
    `packaging/README.md`).
+7. Exportar as tabelas das Estatísticas gerais pra CSV.
 
 ## Licença
 

@@ -5,6 +5,39 @@ Versionamento: [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Adicionado
+
+**Estatísticas gerais**
+- Nova janela (Data > Estatísticas gerais..., ou botão de gráfico na
+  barra), não-modal, com abas Brasil / Regiões / Estados: por categoria,
+  quantidade de municípios, área oficial (km²) e população, cada uma com
+  seu %, mais em quantas UFs a categoria aparece.
+- População selecionável entre Censo 2022 e os anos de estimativa do IBGE.
+- Checkbox "Só estados incluídos no projeto".
+- Em esquema hierárquico, segue o modo de visualização do mapa (`=` /
+  `≥`, com Subtotal e "Outras categorias" pra manter os % somando 100%).
+- Atualiza sozinha a cada mudança de classificação, esquema, modo,
+  estados incluídos ou projeto.
+
+**Dado geográfico**
+- Duas novas fontes em Data > Obtain from Internet, via API de agregados
+  do IBGE: "População e área (Censo 2022)" (tabela 4714, com área
+  territorial oficial) e "População estimada (IBGE)" (tabela 6579, todos
+  os anos depois do Censo). Uma cópia de cada vem empacotada, pra
+  funcionar sem internet.
+
+**Classificação**
+- "Adição em Série": checkbox "Ocultar municípios já classificados em
+  outra categoria", que tira da lista da esquerda quem já tem outra
+  categoria (salva ou pendente) e mostra quantos foram ocultados.
+
+### Testes
+
+- 44 testes (eram 24): contas das estatísticas, leitura das respostas da
+  API do IBGE (sem rede) e os primeiros testes de `gui/` -- smoke tests
+  da Adição em Série e das Estatísticas gerais, abrindo janelas Tk de
+  verdade (pulados onde não há Tk).
+
 ## [1.0.0] - 2026-10-05
 
 Primeira versão pública. Reconstrução completa do legado `pybrmania`.
