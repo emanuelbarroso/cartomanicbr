@@ -22,6 +22,7 @@ from .obtain_data_dialog import ObtainFromCsvDialog, ObtainFromInternetDialog
 from .preview_dialog import PreviewDialog
 from .scheme_editor_dialog import SchemeEditorDialog
 from .state_picker_dialog import StatePickerDialog
+from .statistics_dialog import StatisticsDialog
 from .view_mode_bar import ViewMode, ViewModeBar
 
 APP_TITLE = "Cartomanic BR"
@@ -42,6 +43,7 @@ class MainWindow(tk.Tk):
         self._icon_font = icon_font(self, 14)
         self.status_var = tk.StringVar(value="Pronto.")
         self._resize_job: Optional[str] = None
+        self._stats_dialog: Optional[StatisticsDialog] = None
 
         self._build_menu()
         self._build_toolbar()
@@ -74,6 +76,8 @@ class MainWindow(tk.Tk):
         data_menu.add_separator()
         data_menu.add_command(label="Export JSON", command=self._export_classification_json)
         data_menu.add_command(label="Import JSON", command=self._import_classification_json)
+        data_menu.add_separator()
+        data_menu.add_command(label="Estatísticas gerais...", command=self._open_statistics)
         menubar.add_cascade(label="Data", menu=data_menu)
 
         self.config(menu=menubar)
@@ -101,6 +105,7 @@ class MainWindow(tk.Tk):
             ("scheme_edit", "Editar esquema de classificação...", self._open_scheme_editor),
             ("bulk_tier", "Adição em série de categoria...", self._open_bulk_tier_dialog),
             ("preview", "Visualizar impressão...", self._open_preview),
+            ("statistics", "Estatísticas gerais...", self._open_statistics),
             ("export_json", "Exportar classificação (JSON)...", self._export_classification_json),
             ("import_json", "Importar classificação (JSON)...", self._import_classification_json),
         )
@@ -156,6 +161,29 @@ class MainWindow(tk.Tk):
         self.map_canvas.invalidate_geometry_cache()
         self._sync_map_tree()
         self._redraw_current_view()
+        if self._stats_dialog_open():
+            self._stats_dialog.reload_reference_data()
+
+    # --------------------------------------------------------- statistics
+    def _open_statistics(self) -> None:
+        if self.project is None:
+            self.status_var.set("Abra um projeto para ver as estatísticas.")
+            return
+        if self._stats_dialog_open():
+            self._stats_dialog.lift()
+            self._stats_dialog.focus_set()
+            return
+        self._stats_dialog = StatisticsDialog(self, get_context=lambda: (self.project, self._view_mode))
+
+    def _stats_dialog_open(self) -> bool:
+        return self._stats_dialog is not None and bool(self._stats_dialog.winfo_exists())
+
+    def _refresh_statistics(self) -> None:
+        """Called after anything that feeds the numbers changes:
+        classification, scheme, view mode, included states, the project
+        itself. Cheap when the window is closed; debounced when open."""
+        if self._stats_dialog_open():
+            self._stats_dialog.request_refresh()
 
     # ------------------------------------------------------------- states
     def _included_states(self) -> "set[str]":
@@ -173,6 +201,7 @@ class MainWindow(tk.Tk):
     def _sync_map_tree(self) -> None:
         self.map_tree.refresh(self._included_states())
         self._sync_state_buttons()
+        self._refresh_statistics()
 
     def _sync_state_buttons(self) -> None:
         included = self._included_states()
@@ -356,6 +385,7 @@ class MainWindow(tk.Tk):
     def _on_bulk_tier_rendered(self, uf: str, touched_codes: "list[int]") -> None:
         self.status_var.set(f"Classificações de {uf} aplicadas.")
         self._sync_title()
+        self._refresh_statistics()
         if self._current_view == ("state", uf):
             # already looking at this state: recolor just what changed,
             # instead of reloading/redrawing the whole thing from scratch
@@ -457,10 +487,12 @@ class MainWindow(tk.Tk):
             self._no_project_pane.pack(fill="both", expand=True, padx=8, pady=4)
         else:
             self._body.pack(fill="both", expand=True, padx=8, pady=4)
+        self._refresh_statistics()
 
     def _on_view_mode_change(self, mode: str, tier: Optional[str]) -> None:
         self._view_mode = (mode, tier)
         self._redraw_current_view()
+        self._refresh_statistics()
 
     def _on_municipality_click(self, code_muni: int) -> None:
         if self.project is None:
@@ -486,6 +518,7 @@ class MainWindow(tk.Tk):
             self.status_var.set(f"Município {code_muni}: {next_category}.")
 
         self._sync_title()
+        self._refresh_statistics()
         if not self._recolor_municipalities([code_muni]):
             self._redraw_current_view()
 
@@ -502,6 +535,7 @@ class MainWindow(tk.Tk):
         self.project.clear_classification(code_muni)
         self.status_var.set(f"Município {code_muni}: categoria removida.")
         self._sync_title()
+        self._refresh_statistics()
         if not self._recolor_municipalities([code_muni]):
             self._redraw_current_view()
 

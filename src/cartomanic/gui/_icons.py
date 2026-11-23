@@ -20,6 +20,7 @@ _CODEPOINTS = {
     "scheme_edit": 0xE70F,  # Edit
     "bulk_tier": 0xE8DE,    # MoveToFolder
     "preview": 0xE749,      # Print
+    "statistics": 0xE9D2,   # AreaChart
     "export_json": 0xEDE1,  # Export
     "import_json": 0xE8B5,  # Import
     "add_state": 0xE81E,          # MapPin
