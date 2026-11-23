@@ -42,10 +42,12 @@ class BulkTierDialog(tk.Toplevel):
         self.tier_var = tk.StringVar(value="")
         self.uf_var = tk.StringVar(value="")
         self.status_var = tk.StringVar(value="")
+        self.hide_classified_var = tk.BooleanVar(value=False)
+        self.left_header_var = tk.StringVar(value="Fora da categoria")
 
         self._refresh_base_tiers()
         self._build()
-        self.geometry("640x420")
+        self.geometry("640x450")
         center_over(self, master)
         self.grab_set()
 
@@ -71,6 +73,13 @@ class BulkTierDialog(tk.Toplevel):
         self.uf_combo.grid(row=0, column=3, padx=(6, 0))
         self.uf_combo.bind("<<ComboboxSelected>>", lambda _e: self._on_combo_change())
 
+        ttk.Checkbutton(
+            top,
+            text="Ocultar municípios já classificados em outra categoria",
+            variable=self.hide_classified_var,
+            command=self._reload_current_lists,
+        ).grid(row=1, column=0, columnspan=4, sticky="w", pady=(8, 0))
+
         ttk.Separator(frm, orient="horizontal").pack(fill="x", pady=12)
 
         body = ttk.Frame(frm)
@@ -79,7 +88,7 @@ class BulkTierDialog(tk.Toplevel):
         body.columnconfigure(3, weight=1)
         body.rowconfigure(2, weight=1)
 
-        ttk.Label(body, text="Fora da categoria").grid(row=0, column=0, sticky="w")
+        ttk.Label(body, textvariable=self.left_header_var).grid(row=0, column=0, sticky="w")
         ttk.Label(body, text="Na categoria").grid(row=0, column=3, sticky="w")
 
         self.left_search_var = tk.StringVar(value="")
@@ -171,18 +180,31 @@ class BulkTierDialog(tk.Toplevel):
             self.left_list.delete(0, "end")
             self.right_list.delete(0, "end")
             self._left_codes, self._right_codes = [], []
+            self.left_header_var.set("Fora da categoria")
 
     def _load_lists(self, uf: str, tier: str) -> None:
+        """Fill both lists for the (uf, tier) combo. With "ocultar
+        classificados" on, a município whose *effective* tier (saved or
+        staged in `_pending`) is some other category is left out of the
+        left list entirely, so it can't be pulled into this one by mistake."""
+        hide_classified = self.hide_classified_var.get()
+        hidden = 0
         self._left_codes, self._right_codes = [], []
         self.left_list.delete(0, "end")
         self.right_list.delete(0, "end")
         for code, name in self._munis_for(uf):
-            if self._effective_tier(code) == tier:
+            current = self._effective_tier(code)
+            if current == tier:
                 self._right_codes.append(code)
                 self.right_list.insert("end", name)
+            elif hide_classified and current is not None:
+                hidden += 1
             else:
                 self._left_codes.append(code)
                 self.left_list.insert("end", name)
+        self.left_header_var.set(
+            f"Fora da categoria ({hidden} oculto(s))" if hidden else "Fora da categoria"
+        )
         self._apply_search("left")
         self._apply_search("right")
 
