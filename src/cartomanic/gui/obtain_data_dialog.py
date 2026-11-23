@@ -18,7 +18,7 @@ from typing import Callable, NamedTuple, Optional
 
 import pandas as pd
 
-from ..data import geo_source
+from ..data import geo_source, ibge_source
 from ..engine.snapshot_store import MAX_SNAPSHOTS, SnapshotStore
 from ._dialog_utils import center_over
 
@@ -186,6 +186,10 @@ class _Dataset(NamedTuple):
 
 _INTERNET_DATASETS = [
     _Dataset(geo_source.MUNICIPIOS_DATASET, "Municípios", geo_source.fetch_municipios),
+    _Dataset(ibge_source.CENSO_2022_DATASET, "População e área (Censo 2022)",
+             ibge_source.fetch_censo_2022),
+    _Dataset(ibge_source.ESTIMATIVAS_DATASET, "População estimada (IBGE)",
+             ibge_source.fetch_estimativas),
 ]
 
 
@@ -200,7 +204,7 @@ class ObtainFromInternetDialog(_SnapshotBufferDialog):
     def _build_source(self, frm: ttk.Frame) -> None:
         ttk.Label(frm, text="Tipo de dado:").grid(row=self._grid_row(), column=0, sticky="w")
         combo = ttk.Combobox(
-            frm, textvariable=self.dataset_var, state="readonly", width=22,
+            frm, textvariable=self.dataset_var, state="readonly", width=32,
             values=[d.label for d in _INTERNET_DATASETS],
         )
         combo.grid(row=self._next_row - 1, column=1, sticky="w", padx=(6, 0))
