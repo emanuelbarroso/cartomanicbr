@@ -17,7 +17,7 @@
 ; app, a different version" across installs/upgrades. Generated once;
 ; never change it for this app, even across major versions.
 #define MyAppName "Cartomanic BR"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "Emanuel Barroso"
 #define MyAppExeName "CartomanicBR.exe"
 
